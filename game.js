@@ -47,6 +47,10 @@ class Card {
         return `${this.color}_${this.id}`;
     }
 
+    /**
+     * 
+     * @returns {String} JSON string
+     */
     toJSON() {
         return this.toString();
     }

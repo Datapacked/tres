@@ -1,5 +1,7 @@
 const IRC = require('irc-framework');
 
+const sleeper = require('./sleeper');
+
 const GAME = require('./game');
 
 const express = require('express');
@@ -10,12 +12,6 @@ const JOIN_CODE = process.argv[2] ? process.argv[2] : "null"; // Gets join code 
 var CHANNEL = `#${JOIN_CODE}`; // Joins channel based on join code set by argv[2]
 
 console.log(CHANNEL); // Prints out channel
-
-msleep = (n) => {
-	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, n);
-}
-
-sleep = (n) => msleep(1000 * n);
 
 // Connects bot to server with nickname
 var bot = new IRC.Client();

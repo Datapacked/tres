@@ -2,18 +2,14 @@ const IRC = require('irc-framework');
 
 const crypto = require('crypto');
 
+const sleeper = require('./sleeper');
+
 var CHANNEL = "#bruwuno69";
 
 const HOST = process.argv[2] ? process.argv[2] : '127.0.0.1';
 const PORT = 6667;
 
 var ID = crypto.randomBytes(8).toString('hex');
-
-msleep = (n) => {
-	Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, n);
-}
-
-sleep = (n) => msleep(1000 * n);
 
 var bot = new IRC.Client();
 const OPTIONS = {
