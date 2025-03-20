@@ -27,17 +27,34 @@ const IDS = {
     wild4: 'w4'
 };
 
+/**
+ * 
+ * @param {Number} n number to clamp
+ * @param {Number} maxval max value
+ * @returns {Number} num between `0` and `maxval - 1`
+ */
+const clamp = (n, maxval) => (n >= maxval) ? (n % maxval) : ((n < 0) ? (maxval + n) : n);
+
 class Card {
     /**
      * @name constructor
-     * @param {String} c 
-     * @param {String} ID 
-     * @param {Boolean} iW
+     * @param {String} c card color
+     * @param {String} ID card ID
+     * @param {Boolean} iW is wild?
+     * @param {Boolean} iD is draw?
+     * @param {Number} dA draw amount
+     * @param {Boolean} iR is reverse?
+     * @param {Boolean} iS is skip?
      */
-    constructor(c, ID, iW = false) {
+    constructor(c, ID, iW = false, iD = false, dA = 0, iR = false, iS = false) {
         this.color = c;
         this.id = ID;
         this.isWild = iW;
+        this.isDraw = iD;
+        this.drawAmt = dA;
+        this.isReverse = iR;
+        this.isSkip = iS;
+        this.iWc = null; // color of wild (default is null)
     }
     /**
      * 
@@ -47,10 +64,6 @@ class Card {
         return `${this.color}_${this.id}`;
     }
 
-    /**
-     * 
-     * @returns {String} JSON string
-     */
     toJSON() {
         return this.toString();
     }
@@ -61,7 +74,9 @@ class Card {
      * @returns {boolean} whether the card matches or not
      */
     matches(otherCard) {
-        if (otherCard.isWild) {
+        if (otherCard.isWild && (this.color === null)) {
+            return true;
+        } else if (otherCard.isWild && (this.color == otherCard.color)) {
             return true;
         }
         return (otherCard.color == this.color) || (otherCard.id == this.id);
@@ -89,8 +104,16 @@ function drawN(ncards, colors, ids) {
     const C = Object.keys(colors);
     const I = Object.keys(ids);
     for (var i = 0; i < ncards; i++) {
-        let cID = ids[randomItem(I)];
-        retdeck.push(new Card(colors[randomItem(C)], cID, ((cID == IDS.wild) || (cID == IDS.wild4))));
+        let cID = ids[randomItem(I)]; // Random ID
+        let da = (cID == IDS.draw2) ? 2 : ((cID == IDS.wild4) ? 4 : 0); // Draw amount
+        retdeck.push(new Card(colors[randomItem(C)],
+            cID,
+            ((cID == IDS.wild) || (cID == IDS.wild4)),
+            ((cID == IDS.draw2) || (cID == IDS.wild4)),
+            da,
+            (cID == IDS.reverse),
+            ((cID == this.draw2) || (cID == this.draw4) || (cID == this.skip))
+        )); // Card initialization
     }
     return retdeck
 }
@@ -133,6 +156,16 @@ class Player {
             this.deck.push(drawN(1, COLORS, IDS)[0]);
         } while ((until && (this.deck[this.deck.length - 1] != toMatch)) && invalidargs);
     }
+
+    drawN(n = 1) {
+        this.deck.push(...drawN(n, COLORS, IDS));
+    }
+
+    // Basic functions for if the player has either a wild or draw in their deck that matches
+
+    hasWild = (C) => this.deck.some((c) => (c.isWild && (C.matches(c) || c.matches(C))));
+
+    hasDraw = (C) => this.deck.some((c) => (c.isDraw && (C.matches(c) || c.matches(C))));
 }
 
 class Game {
@@ -156,13 +189,16 @@ class Game {
      * 
      * @param {String} pID player ID
      * @param {Number} ncards number of cards to start with, default is game default card draw amount
+     * 
+     * @returns {Number} player turn index
      */
     join(pID, ncards = this.dcards) {
         if (this.plist.findIndex((item) => { return (item == pID); }) != -1) {
-            return;
+            return -1;
         }
         this.pcards[pID] = new Player(ncards);
         this.plist.push(pID);
+        return this.plist.length - 1;
     }
 
     /**
@@ -175,6 +211,9 @@ class Game {
         }
         delete this.pcards[pID];
         delete this.plist[this.plist.findIndex((item) => { return (item == pID); })];
+        // Rewinds and cycles the player index
+        this.pidx--;
+        this.cycle();
     }
 
     /**
@@ -187,16 +226,78 @@ class Game {
         if (this.plist[this.pidx] != pID) {
             return -2; // Return -2 for out of turn play
         }
+
         if (!this.canPlay(this.pcards[pID].getCard(didx))) {
             return -1; // Return -1 for a mismatched card
         }
+
+        // Prints debug info
         console.log(this.pcards[pID].getCard(didx));
         console.log(this.cC);
         console.log(this.canPlay(this.pcards[pID].getCard(didx)));
-        this.pidx = this.pidx++ % this.plist.length;
-        this.cC = this.pcards[pID].popCard(didx);
+
+        // Cycles turn
+        this.cycle();
+
+        // Grabs valid card
+        let validCard = this.pcards[pID].popCard(didx);
+
+        // Reverses turn order if the card has a reversal property
+        if (validCard.isReverse) {
+            this.plist.reverse();
+            this.pcards.reverse();
+            this.pidx = this.plist - (this.pidx + 1);
+        }
+
+        // Skips next player if the card played is a skip AND NOT a draw
+        if (validCard.isSkip && !validCard.isDraw) {
+            this.cycle();
+        }
+
+        // if the next player doesn't have a draw card, make them draw the stacked amount
+        if (validCard.isSkip && validCard.isDraw && !this.pcards[this.plist[this.pidx]].hasDraw(validCard)) {
+            this.drawN(this.plist[this.pidx], validCard.drawAmt);
+        }
+
+        // If the card played isn't a draw-enabled card, make the player who played the card draw cards
+        if ((this.cC.drawAmt > 0) && (validCard.drawAmt == 0)) {
+            this.drawN(this.plist[clamp(this.pidx - 1)], this.cC.drawAmt);
+        }
+
+        // Sets current card to valid card and adjusts for stacking
+        if (validCard.drawAmt == 0) {
+            this.cC = validCard;
+        } else {
+            let d = this.cC.drawAmt;
+            this.cC = validCard;
+            this.cC.drawAmt += d;
+        }
         return 0; // Return 0 for success
     }
+
+    /**
+     * 
+     * @param {String} pID player ID
+     */
+    setWild(color) {
+        if (this.cC.isWild) {
+            this.cC.color = color;
+        }
+    }
+
+    /**
+     * Handles incrementing and cycling of player index
+     */
+    cycle() {
+        this.pidx++;
+        this.pidx %= this.plist.length;
+    }
+
+    /**
+     * 
+     * @returns {Number} player turn
+     */
+    getTurn = () => this.pidx;
 
     /**
      * 
@@ -208,11 +309,20 @@ class Game {
 
     /**
      * 
+     * @param {String} pID player ID 
+     * @param {Number} n number of cards to draw
+     */
+    drawN(pID, n = 1) {
+        this.pcards[pID].drawN(n);
+    }
+
+    /**
+     * 
      * @param {Card} card Card to play 
      * @returns {boolean} If card can be played
      */
     canPlay(card) {
-        return this.cC.matches(card);
+        return (this.cC.matches(card) || card.matches(this.cC));
     }
 
     /**
