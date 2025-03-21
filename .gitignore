@@ -2,3 +2,6 @@ node_modules/
 
 # This is th "compiled" version of the cards.xml config
 cards.json
+
+# ignore binaries
+server

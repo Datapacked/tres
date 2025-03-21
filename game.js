@@ -86,6 +86,14 @@ try {
     }
 }
 
+for (key in cprops) {
+    cprops[key].isWild = eval(cprops[key].isWild || 'false');
+    cprops[key].isDraw = eval(cprops[key].isDraw || 'false');
+    cprops[key].drawAmt = eval(cprops[key].drawAmt || 0);
+    cprops[key].isReverse = eval(cprops[key].isReverse || 'false');
+    cprops[key].isSkip = eval(cprops[key].isSkip || 'false');
+}
+
 const COLORS = colors;
 
 const IDS = ids;
@@ -123,6 +131,7 @@ class Card {
         this.drawAmt = dA;
         this.isReverse = iR;
         this.isSkip = iS;
+        this.iWc = null; // internally sets to null to check if the wild has a color or not set by the player
     }
     /**
      * 
@@ -142,9 +151,10 @@ class Card {
      * @returns {boolean} whether the card matches or not
      */
     matches(otherCard) {
-        if (otherCard.isWild && (this.color === null)) {
+        if (otherCard.isWild && ((otherCard.iWc == this.color) || (otherCard.iWc === null))) {
             return true;
-        } else if (otherCard.isWild && (this.color == otherCard.color)) {
+        }
+        if (this.isWild && (this.iWc === null)) {
             return true;
         }
         return (otherCard.color == this.color) || (otherCard.id == this.id);
@@ -160,6 +170,9 @@ function randomItem(arr) {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
+const C = Object.keys(colors);
+const I = Object.keys(ids);
+
 /**
  * 
  * @param {Number} ncards Number of cards to "draw"
@@ -169,18 +182,16 @@ function randomItem(arr) {
  */
 function drawN(ncards, colors, ids) {
     retdeck = [];
-    const C = Object.keys(colors);
-    const I = Object.keys(ids);
     for (var i = 0; i < ncards; i++) {
         let cID = ids[randomItem(I)]; // Random ID
         retdeck.push(new Card(
             colors[randomItem(C)],
             cID,
-            eval(CPROPS[cID].isWild || 'false'),
-            eval(CPROPS[cID].isDraw || 'false'),
-            eval(CPROPS[cID].drawAmt || 0),
-            eval(CPROPS[cID].isReverse || 'false'),
-            eval(CPROPS[cID].isSkip || 'false')
+            CPROPS[cID].isWild,
+            CPROPS[cID].isDraw,
+            CPROPS[cID].drawAmt,
+            CPROPS[cID].isReverse,
+            CPROPS[cID].isSkip
         )); // Card initialization
     }
     return retdeck
@@ -210,7 +221,7 @@ class Player {
      * @returns {Card} card popped
      */
     popCard(idx) {
-        return this.deck.splice(idx, 1);
+        return this.deck.splice(idx, 1)[0];
     }
 
     /**
@@ -299,11 +310,6 @@ class Game {
             return -1; // Return -1 for a mismatched card
         }
 
-        // Prints debug info
-        console.log(this.pcards[pID].getCard(didx));
-        console.log(this.cC);
-        console.log(this.canPlay(this.pcards[pID].getCard(didx)));
-
         // Cycles turn
         this.cycle();
 
@@ -329,7 +335,7 @@ class Game {
 
         // If the card played isn't a draw-enabled card, make the player who played the card draw cards
         if ((this.cC.drawAmt > 0) && (validCard.drawAmt == 0)) {
-            this.drawN(this.plist[clamp(this.pidx - 1)], this.cC.drawAmt);
+            this.drawN(this.plist[clamp(this.pidx - 1, this.plist.length)], this.cC.drawAmt);
         }
 
         // Sets current card to valid card and adjusts for stacking
@@ -350,6 +356,7 @@ class Game {
     setWild(color) {
         if (this.cC.isWild) {
             this.cC.color = color;
+            this.cC.iWc = color;
         }
     }
 
@@ -390,7 +397,7 @@ class Game {
      * @returns {boolean} If card can be played
      */
     canPlay(card) {
-        return (this.cC.matches(card) || card.matches(this.cC));
+        return card.matches(this.cC);
     }
 
     /**
