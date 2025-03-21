@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "express": "^4.21.2",
-    "irc-framework": "^4.14.0"
+    "irc-framework": "^4.14.0",
+    "xml2js": "^0.6.2"
   }
 }

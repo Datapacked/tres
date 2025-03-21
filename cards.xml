@@ -1,0 +1,30 @@
+<tres>
+    <colors>
+        <!-- Customize BELOW these colors -->
+
+        <color id="r" name="red"></color>
+        <color id="g" name="green"></color>
+        <color id="b" name="blue"></color>
+        <color id="y" name="yellow"></color>
+    </colors>
+    <cards>
+        <!-- Customize BELOW these two groups of cards-->
+
+        <card id="w" name="wild" isWild="true"></card>
+        <card id="w4" name="wild4" isWild="true" drawAmt="4"></card>
+        <card id="d2" name="draw2" isDraw="true" drawAmt="2"></card>
+        <card id="sk" name="skip" isSkip="true"></card>
+        <card id="rv" name="reverse" isReverse="true"></card>
+
+        <card id="0" name="zero"></card>
+        <card id="1" name="one"></card>
+        <card id="2" name="two"></card>
+        <card id="3" name="three"></card>
+        <card id="4" name="four"></card>
+        <card id="5" name="five"></card>
+        <card id="6" name="six"></card>
+        <card id="7" name="seven"></card>
+        <card id="8" name="eight"></card>
+        <card id="9" name="nine"></card>
+    </cards>
+</tres>

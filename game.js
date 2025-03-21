@@ -1,30 +1,99 @@
+const fs = require('fs');
+const xml2js = require('xml2js');
+
+function getCards(filename) {
+    try {
+        return JSON.parse(fs.readFileSync(filename.replace('.xml', '.json')));
+    } catch {
+        let parser = new xml2js.Parser();
+        let content;
+        var data = fs.readFileSync(filename);
+        parser.parseString(data, (err, res) => {
+            content = res;
+        });
+        fs.writeFileSync(filename.replace('.xml', '.json'), JSON.stringify(content, null, 2));
+        return content;
+    }
+}
+
+var data = getCards("cards.xml");
+
+// Reads colors from the config file
+
+var colors = {}
+
+try {
+    data.tres.colors[0].color.map((e) => { colors[e["$"].name] = e["$"].id; });
+} catch {
+    colors = {
+        red: 'r',
+        green: 'g',
+        blue: 'b',
+        yellow: 'y'
+    };
+}
+
+// Reads cards from the config file
+
+var ids = {};
+
+try {
+    data.tres.cards[0].card.map((e) => { ids[e["$"].name] = e["$"].id });
+} catch {
+    ids = {
+        zero: '0',
+        one: '1',
+        two: '2',
+        three: '3',
+        four: '4',
+        five: '5',
+        six: '6',
+        seven: '7',
+        eight: '8',
+        nine: '9',
+        skip: 'sk',
+        reverse: 'rv',
+        draw2: 'd2',
+        wild: 'w',
+        wild4: 'w4'
+    };
+}
+
+var cprops = {}
+
+try {
+    data.tres.cards[0].card.map((e) => { cprops[e["$"].id] = e["$"] });
+} catch {
+    cprops = {
+        'd2': {
+            isDraw: true,
+            drawAmt: 2
+        },
+        'sk': {
+            isSkip: true
+        },
+        'rv': {
+            isReverse: true
+        },
+        'w': {
+            isWild: true
+        },
+        'w4': {
+            isWild: true,
+            isDraw: true,
+            drawAmt: 4
+        }
+    }
+}
+
+const COLORS = colors;
+
+const IDS = ids;
+
+const CPROPS = cprops;
+
 const DEFAULT_OPTS = {
     draw_until: false
-};
-
-const COLORS = {
-    red: 'r',
-    green: 'g',
-    blue: 'b',
-    yellow: 'y'
-};
-
-const IDS = {
-    zero: '0',
-    one: '1',
-    two: '2',
-    three: '3',
-    four: '4',
-    five: '5',
-    six: '6',
-    seven: '7',
-    eight: '8',
-    nine: '9',
-    skip: 'sk',
-    reverse: 'rv',
-    draw2: 'd2',
-    wild: 'w',
-    wild4: 'w4'
 };
 
 /**
@@ -54,7 +123,6 @@ class Card {
         this.drawAmt = dA;
         this.isReverse = iR;
         this.isSkip = iS;
-        this.iWc = null; // color of wild (default is null)
     }
     /**
      * 
@@ -105,14 +173,14 @@ function drawN(ncards, colors, ids) {
     const I = Object.keys(ids);
     for (var i = 0; i < ncards; i++) {
         let cID = ids[randomItem(I)]; // Random ID
-        let da = (cID == IDS.draw2) ? 2 : ((cID == IDS.wild4) ? 4 : 0); // Draw amount
-        retdeck.push(new Card(colors[randomItem(C)],
+        retdeck.push(new Card(
+            colors[randomItem(C)],
             cID,
-            ((cID == IDS.wild) || (cID == IDS.wild4)),
-            ((cID == IDS.draw2) || (cID == IDS.wild4)),
-            da,
-            (cID == IDS.reverse),
-            ((cID == this.draw2) || (cID == this.draw4) || (cID == this.skip))
+            eval(CPROPS[cID].isWild || 'false'),
+            eval(CPROPS[cID].isDraw || 'false'),
+            eval(CPROPS[cID].drawAmt || 0),
+            eval(CPROPS[cID].isReverse || 'false'),
+            eval(CPROPS[cID].isSkip || 'false')
         )); // Card initialization
     }
     return retdeck
