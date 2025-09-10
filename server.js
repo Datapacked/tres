@@ -74,7 +74,13 @@ bot.matchMessage(/^GAME/, function (event) {
 	// Joins with player ID
 	if (msg.match(/^JOIN/)) {
 		let pTurn = nGame.join(player_id);
+		bot.channel(`${CHANNEL}_${player_id}`).join(); // Hopefully this works, cannot test due to being unable to run inspircd
 		event.reply(`REPLY ${player_id} TURNIDX ${pTurn}`);
+	}
+	if (msg.match(/^LEAVE/)) {
+		nGame.leave(player_id);
+		bot.channel(`${CHANNEL}_${player_id}`).part();
+		event.reply(`REPLY ${player_id} LEFT`);
 	}
 	// Gets turn (no auth or anything needed)
 	if (msg.match(/^TURN/)) {
