@@ -1,6 +1,8 @@
 # tres
 tres because uno was taken
 
+Also I have not made a client for this, the best way to play with the server is to use IRC, also everything is in plaintext sadly, I should probably implement separate channels at some point lol
+
 ## How to run
 
 Install and configure `inspircd` to run on port `6667`
